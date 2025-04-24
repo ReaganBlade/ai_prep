@@ -7,10 +7,10 @@ const monaSans = Mona_Sans({
   subsets: ["latin"],
 });
 
-
 export const metadata: Metadata = {
   title: "PrepWise",
-  description: "A job interview preparation platform powered by Vapi AI Voice agents",
+  description:
+    "A job interview preparation platform powered by Vapi AI Voice agents",
 };
 
 export default function RootLayout({
@@ -20,9 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body
-        className={`${monaSans.className} antialiased pattern`}
-      >
+      <body className={`${monaSans.className} antialiased pattern`}>
         {children}
       </body>
     </html>
