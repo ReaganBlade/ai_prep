@@ -40,17 +40,20 @@ export async function POST(request: Request) {
       userId: userid,
       finalized: true,
       coverImage: getRandomInterviewCover(),
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
 
     await db.collection("interviews").add(interview);
 
-    return Response.json({
-      success: true,
-      message: 'Questions successfully Added!'
-    }, {
-      status: 200
-    })
+    return Response.json(
+      {
+        success: true,
+        message: "Questions successfully Added!",
+      },
+      {
+        status: 200,
+      }
+    );
   } catch (error) {
     console.log(error);
 

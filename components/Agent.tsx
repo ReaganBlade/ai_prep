@@ -14,7 +14,7 @@ const Agent = ({ userName, userId, type }: AgentProps) => {
   const callStatus = CallStatus.ACTIVE;
   const messages = [
     "What's your Name?",
-    "My name is John Doe, nice to meet ya!"
+    "My name is John Doe, nice to meet ya!",
   ];
 
   const lastMessage = messages[messages.length - 1];
@@ -52,7 +52,13 @@ const Agent = ({ userName, userId, type }: AgentProps) => {
       {messages.length > 0 && (
         <div className="transcript-border">
           <div className="transcript p-2">
-            <p key={lastMessage} className={cn('transition-opacity duration-500 opacity-0', 'animate-fadeIn opacity-100')}>
+            <p
+              key={lastMessage}
+              className={cn(
+                "transition-opacity duration-500 opacity-0",
+                "animate-fadeIn opacity-100"
+              )}
+            >
               {lastMessage}
             </p>
           </div>
