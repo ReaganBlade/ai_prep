@@ -73,7 +73,7 @@ Before you start, make sure you have the following installed on your machine:
 ### 1. Clone the Repository
 Clone the project to your local machine using Git:
 ```bash
-git clone https://github.com/adrianhajdin/ai_mock_interviews.git
+git clone https://github.com/ReaganBlade/ai_prep.git
 cd ai_mock_interviews
 ```
 
