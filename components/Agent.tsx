@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { vapi } from "@/lib/vapi.sdk";
 import { interviewer } from "@/constants";
+import { createFeedback } from "@/lib/actions/general.action";
 
 enum CallStatus {
   INACTIVE = "INACTIVE",
@@ -73,12 +74,13 @@ const Agent = ({
     console.log("Generate Feedback here.");
 
     // TODO: Create a Server action that generates feedback
-    const { success, id } = {
-      success: true,
-      id: "feedback-id",
-    };
+    const { success, feedbackId } = await createFeedback({
+      interviewId: interviewId!,
+      userId: userId!,
+      transcript: messages,
+    });
 
-    if (success && id) {
+    if (success && feedbackId) {
       router.push(`/interview/${interviewId}/feedback`);
     } else {
       console.log(`Error saving feedback`);
@@ -119,8 +121,8 @@ const Agent = ({
 
       await vapi.start(interviewer, {
         variableValues: {
-          questions: formattedQuestions
-        }
+          questions: formattedQuestions,
+        },
       });
     }
   };
