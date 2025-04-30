@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/actions/auth.action";
 import {
   getInterviewsByUserId,
   getFeedbackByInterviewId,
+  getLatestInterviews,
 } from "@/lib/actions/general.action";
 
 const page = async () => {
@@ -14,7 +15,7 @@ const page = async () => {
 
   const [userInterviews, latestInterviews] = await Promise.all([
     await getInterviewsByUserId(user?.id!),
-    await getFeedbackByInterviewId({ userId: user?.id! }),
+    await getLatestInterviews({ userId: user?.id! }),
   ]);
 
   // const userInterviews = await getInterviewsByUserId(user?.id!);

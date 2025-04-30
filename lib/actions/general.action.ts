@@ -1,3 +1,5 @@
+"use server";
+
 import { feedbackSchema } from "@/constants";
 import { db } from "@/firebase/admin";
 import { google } from "@ai-sdk/google";
@@ -122,12 +124,22 @@ export const getFeedbackByInterviewId = async (
 ): Promise<Feedback | null> => {
   const { interviewId, userId } = params;
 
+  console.log(`FeedbackId: ${interviewId}, UserId: ${userId}`);
+
   const feedback = await db
     .collection("feedback")
-    .where('itnerviewId', '==', interviewId)
-    .where('userId', '==', userId)
+    .where("interviewId", "==", interviewId)
+    .where("userId", "==", userId)
     .limit(1)
     .get();
+
+  if (!interviewId || !userId) {
+    console.warn("Missing interviewId or userId in getFeedbackByInterviewId:", {
+      interviewId,
+      userId,
+    });
+    return null;
+  }
 
   if (feedback.empty) {
     return null;
@@ -136,7 +148,7 @@ export const getFeedbackByInterviewId = async (
   const feedbackDoc = feedback.docs[0];
 
   return {
-    id: feedbackDoc.id, 
-    ...feedbackDoc.data()
+    id: feedbackDoc.id,
+    ...feedbackDoc.data(),
   } as Feedback;
 };
