@@ -6,6 +6,7 @@ import InterviewCard from "@/components/InterviewCard";
 import { getCurrentUser } from "@/lib/actions/auth.action";
 import {
   getInterviewsByUserId,
+  getFeedbackByInterviewId,
   getLatestInterviews,
 } from "@/lib/actions/general.action";
 
