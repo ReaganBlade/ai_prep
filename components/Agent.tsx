@@ -89,16 +89,19 @@ const Agent = ({
   };
 
   useEffect(() => {
-    if (callStatus === CallStatus.FINISHED) {
-      if (type === "generate") {
-        router.push("/");
-      } else {
-        handleGenerateFeedback(messages);
+    const runEffect = async () => {
+      if (callStatus === CallStatus.FINISHED) {
+        if (type === "generate") {
+          router.push("/");
+        } else {
+          await handleGenerateFeedback(messages);
+        }
       }
-    }
-
-    if (callStatus === CallStatus.FINISHED) router.push("/");
+    };
+  
+    runEffect();
   }, [messages, callStatus, type, userId]);
+  
 
   const handleCall = async () => {
     setCallStatus(CallStatus.CONNECTING);
