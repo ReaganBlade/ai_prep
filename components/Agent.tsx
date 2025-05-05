@@ -72,6 +72,7 @@ const Agent = ({
 
   const handleGenerateFeedback = async (message: SavedMessage[]) => {
     console.log("Generate Feedback here.");
+    console.log(messages);
 
     // TODO: Create a Server action that generates feedback
     const { success, feedbackId } = await createFeedback({
@@ -89,15 +90,17 @@ const Agent = ({
   };
 
   useEffect(() => {
-    if (callStatus === CallStatus.FINISHED) {
-      if (type === "generate") {
-        router.push("/");
-      } else {
-        handleGenerateFeedback(messages);
+    const runEffect = async () => {
+      if (callStatus === CallStatus.FINISHED) {
+        if (type === "generate") {
+          router.push("/");
+        } else {
+          await handleGenerateFeedback(messages);
+        }
       }
-    }
+    };
 
-    if (callStatus === CallStatus.FINISHED) router.push("/");
+    runEffect();
   }, [messages, callStatus, type, userId]);
 
   const handleCall = async () => {
@@ -139,66 +142,80 @@ const Agent = ({
 
   return (
     <>
-      <div className="call-view p-2">
-        <div className="card-interviewer">
-          <div className="avatar">
-            <Image
-              src="/ai-avatar.png"
-              alt="vapi"
-              width={65}
-              height={54}
-              className="object-cover"
-            />
-            {isSpeaking && <span className="animate-speak"></span>}
-          </div>
-          <h3>AI Interviewer</h3>
-        </div>
+      {callStatus !== CallStatus.FINISHED ? (
+        <section>
+          <div className="call-view p-2">
+            <div className="card-interviewer">
+              <div className="avatar">
+                <Image
+                  src="/ai-avatar.png"
+                  alt="vapi"
+                  width={65}
+                  height={54}
+                  className="object-cover"
+                />
+                {isSpeaking && <span className="animate-speak"></span>}
+              </div>
+              <h3>AI Interviewer</h3>
+            </div>
 
-        <div className="card-border">
-          <div className="card-content">
-            <Image
-              src="/user-avatar.png"
-              alt="user avatar"
-              width={540}
-              height={540}
-              className="rounded-full object-cover size-[120px]"
-            />
-            <h3>{userName}</h3>
+            <div className="card-border">
+              <div className="card-content">
+                <Image
+                  src="/user-avatar.png"
+                  alt="user avatar"
+                  width={540}
+                  height={540}
+                  className="rounded-full object-cover size-[120px]"
+                />
+                <h3>{userName}</h3>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-      {messages.length > 0 && (
-        <div className="transcript-border">
-          <div className="transcript p-2">
-            <p
-              key={latestMessage}
-              className={cn(
-                "transition-opacity duration-500 opacity-0",
-                "animate-fadeIn opacity-100"
-              )}
-            >
-              {latestMessage}
-            </p>
+
+          {messages.length > 0 && (
+            <div className="transcript-border">
+              <div className="transcript p-2">
+                <p
+                  key={latestMessage}
+                  className={cn(
+                    "transition-opacity duration-500 opacity-0",
+                    "animate-fadeIn opacity-100"
+                  )}
+                >
+                  {latestMessage}
+                </p>
+              </div>
+            </div>
+          )}
+          <div className="w-full flex justify-center p-2">
+            {callStatus !== "ACTIVE" ? (
+              <button className="relative btn-call" onClick={handleCall}>
+                <span
+                  className={cn(
+                    "absolute animate-ping rounded-full opacity-75",
+                    callStatus !== "CONNECTING" && "hidden"
+                  )}
+                />
+                <span>{isCallInactiveOrFinished ? "Call" : "..."}</span>
+              </button>
+            ) : (
+              <button className="btn-disconnect" onClick={handleDisconnect}>
+                END
+              </button>
+            )}
           </div>
-        </div>
+        </section>
+      ) : (
+        <section className="section-feedback">
+          <div className="flex flex-row justify-center">
+            <h1 className="text-4xl font-semibold">CALL ENDED</h1>
+            <div className="p-10 font-semibold">
+              Please Wait till the feedback is generated.....
+            </div>
+          </div>
+        </section>
       )}
-      <div className="w-full flex justify-center p-2">
-        {callStatus !== "ACTIVE" ? (
-          <button className="relative btn-call" onClick={handleCall}>
-            <span
-              className={cn(
-                "absolute animate-ping rounded-full opacity-75",
-                callStatus !== "CONNECTING" && "hidden"
-              )}
-            />
-            <span>{isCallInactiveOrFinished ? "Call" : "..."}</span>
-          </button>
-        ) : (
-          <button className="btn-disconnect" onClick={handleDisconnect}>
-            END
-          </button>
-        )}
-      </div>
     </>
   );
 };
