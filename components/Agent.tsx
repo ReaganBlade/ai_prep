@@ -207,9 +207,9 @@ const Agent = ({
           </div>
         </section>
       ) : (
-        <section className="section-feedback">
-          <div className="flex flex-row justify-center">
-            <h1 className="text-4xl font-semibold">CALL ENDED</h1>
+        <section className="flex justify-center items-center">
+          <div className="flex flex-col justify-center items-center pt-10 card-interviewer">
+            <h1 className="text-6xl font-bold">CALL ENDED</h1>
             <div className="p-10 font-semibold">
               Please Wait till the feedback is generated.....
             </div>

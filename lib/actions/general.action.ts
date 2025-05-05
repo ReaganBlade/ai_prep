@@ -76,7 +76,7 @@ export const createFeedback = async (params: CreateFeedbackParams) => {
       },
     } = await generateObject({
       model: google("gemini-2.0-flash-001", {
-        structuredOutputs: false,K
+        structuredOutputs: false,
       }),
       schema: feedbackSchema,
       prompt: `
@@ -143,6 +143,7 @@ export const getFeedbackByInterviewId = async (
     .collection("feedback")
     .where("interviewId", "==", interviewId)
     .where("userId", "==", userId)
+    .orderBy("createdAt", "desc")
     .limit(1)
     .get();
 
