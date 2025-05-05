@@ -76,20 +76,33 @@ export const createFeedback = async (params: CreateFeedbackParams) => {
       },
     } = await generateObject({
       model: google("gemini-2.0-flash-001", {
-        structuredOutputs: false,
+        structuredOutputs: false,K
       }),
       schema: feedbackSchema,
       prompt: `
-      You are an AI interviewer analyzing a mock interview. Your task is to evaluate the candidate based on structured categories. Be thorough and detailed in your analysis. Don't be lenient with the candidate. If there are mistakes or areas for improvement, point them out.
+      You are an expert AI interviewer evaluating a mock interview transcript. Your task is to **critically and precisely** assess the candidate’s performance based on specific evaluation categories. Use a **strict scoring policy** to ensure fairness and clarity.
+    
+      🔴 Important Guidelines:
+      - **Only assign high scores for strong, clearly demonstrated performance.**
+      - If there is **insufficient evidence** in the transcript to evaluate a category, assign a **score of 0, 5, or 10 at most**—do **not** use placeholder scores like 50.
+      - Be honest and professional. Avoid inflating scores based on assumptions or potential.
+      - Provide a **specific justification** for every score, referencing content (or lack thereof) from the transcript.
+    
       Transcript:
       ${formattedTranscript}
-
-      Please score the candidate from 0 to 100 in the following areas. Do not add categories other than the ones provided:
-      - **Communication Skills**: Clarity, articulation, structured responses.
-      - **Technical Knowledge**: Understanding of key concepts for the role.
-      - **Problem-Solving**: Ability to analyze problems and propose solutions.
-      - **Cultural & Role Fit**: Alignment with company values and job role.
-      - **Confidence & Clarity**: Confidence in responses, engagement, and clarity.
+    
+      Evaluation Categories (Score each from 0 to 100 with detailed justification):
+      1. **Communication Skills**: Clarity, structure, and articulation of responses.
+      2. **Technical Knowledge**: Demonstrated understanding of relevant concepts and ability to discuss them effectively.
+      3. **Problem-Solving**: Analytical thinking and ability to approach and solve problems logically.
+      4. **Cultural & Role Fit**: Alignment with company values and appropriateness for the role, based on what is said.
+      5. **Confidence & Clarity**: Display of confidence, decisiveness, and clarity under pressure.
+    
+      Format your output like this:
+      - **[Category Name]**: [Score]/100  
+        *Justification:* [Detailed, specific reasoning with reference to the transcript.]
+    
+      End with a short summary (3–5 sentences) outlining overall performance, key strengths, and areas for improvement.
       `,
       system:
         "You are a professional interviewer analyzing a mock interview. Your task is to evaluate the candidate based on structured categories",
