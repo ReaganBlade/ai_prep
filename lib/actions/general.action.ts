@@ -1,62 +1,15 @@
 "use server";
 
-import { feedbackSchema } from "@/constants";
-import { db } from "@/firebase/admin";
-import { google } from "@ai-sdk/google";
 import { generateObject } from "ai";
+import { google } from "@ai-sdk/google";
+import { ID, Query } from "node-appwrite";
 
-export const getInterviewsByUserId = async (
-  userId: string
-): Promise<Interview[] | null> => {
-  const interviews = await db
-    .collection("interviews")
-    .where("userId", "==", userId)
-    .orderBy("createdAt", "desc")
-    .get();
+import { databases } from "@/appwrite/admin";
+import { APPWRITE_CONFIG } from "@/appwrite/config";
+import { feedbackSchema } from "@/constants";
 
-  if (interviews.empty) {
-    return null;
-  }
-
-  return interviews.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  })) as Interview[];
-};
-
-export const getLatestInterviews = async (
-  params: GetLatestInterviewsParams
-): Promise<Interview[] | null> => {
-  const { userId, limit = 20 } = params;
-
-  const interviews = await db
-    .collection("interviews")
-    .orderBy("createdAt", "desc")
-    .where("finalized", "==", true)
-    .where("userId", "!=", userId)
-    .limit(limit)
-    .get();
-
-  if (interviews.empty) {
-    return null;
-  }
-
-  return interviews.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  })) as Interview[];
-};
-
-export const getInterviewById = async (
-  id: string
-): Promise<Interview | null> => {
-  const interview = await db.collection("interviews").doc(id).get();
-
-  return interview.data() as Interview | null;
-};
-
-export const createFeedback = async (params: CreateFeedbackParams) => {
-  const { interviewId, userId, transcript } = params;
+export async function createFeedback(params: CreateFeedbackParams) {
+  const { interviewId, userId, transcript, feedbackId } = params;
 
   try {
     const formattedTranscript = transcript
@@ -64,105 +17,185 @@ export const createFeedback = async (params: CreateFeedbackParams) => {
         (sentence: { role: string; content: string }) =>
           `- ${sentence.role}: ${sentence.content}\n`
       )
-      .join(``);
+      .join("");
 
-    const {
-      object: {
-        totalScore,
-        categoryScores,
-        strengths,
-        areasForImprovement,
-        finalAssessment,
-      },
-    } = await generateObject({
+    const { object } = await generateObject({
       model: google("gemini-2.0-flash-001", {
         structuredOutputs: false,
       }),
       schema: feedbackSchema,
       prompt: `
-      You are an expert AI interviewer evaluating a mock interview transcript. Your task is to **critically and precisely** assess the candidate’s performance based on specific evaluation categories. Use a **strict scoring policy** to ensure fairness and clarity.
-    
-      🔴 Important Guidelines:
-      - **Only assign high scores for strong, clearly demonstrated performance.**
-      - If there is **insufficient evidence** in the transcript to evaluate a category, assign a **score of 0, 5, or 10 at most**—do **not** use placeholder scores like 50.
-      - Be honest and professional. Avoid inflating scores based on assumptions or potential.
-      - Provide a **specific justification** for every score, referencing content (or lack thereof) from the transcript.
-    
-      Transcript:
-      ${formattedTranscript}
-    
-      Evaluation Categories (Score each from 0 to 100 with detailed justification):
-      1. **Communication Skills**: Clarity, structure, and articulation of responses.
-      2. **Technical Knowledge**: Demonstrated understanding of relevant concepts and ability to discuss them effectively.
-      3. **Problem-Solving**: Analytical thinking and ability to approach and solve problems logically.
-      4. **Cultural & Role Fit**: Alignment with company values and appropriateness for the role, based on what is said.
-      5. **Confidence & Clarity**: Display of confidence, decisiveness, and clarity under pressure.
-    
-      Format your output like this:
-      - **[Category Name]**: [Score]/100  
-        *Justification:* [Detailed, specific reasoning with reference to the transcript.]
-    
-      End with a short summary (3–5 sentences) outlining overall performance, key strengths, and areas for improvement.
-      `,
+        You are an AI interviewer analyzing a mock interview. Your task is to evaluate the candidate based on structured categories. Be thorough and detailed in your analysis. Don't be lenient with the candidate. If there are mistakes or areas for improvement, point them out.
+        Transcript:
+        ${formattedTranscript}
+
+        Please score the candidate from 0 to 100 in the following areas. Do not add categories other than the ones provided:
+        - **Communication Skills**: Clarity, articulation, structured responses.
+        - **Technical Knowledge**: Understanding of key concepts for the role.
+        - **Problem-Solving**: Ability to analyze problems and propose solutions.
+        - **Cultural & Role Fit**: Alignment with company values and job role.
+        - **Confidence & Clarity**: Confidence in responses, engagement, and clarity.
+        `,
       system:
         "You are a professional interviewer analyzing a mock interview. Your task is to evaluate the candidate based on structured categories",
     });
 
-    const feedback = await db.collection(`feedback`).add({
-      interviewId,
-      userId,
-      totalScore,
-      categoryScores,
-      strengths,
-      areasForImprovement,
-      finalAssessment,
+    const feedback = {
+      interviewId: interviewId,
+      userId: userId,
+      totalScore: object.totalScore,
+      categoryScores: object.categoryScores,
+      strengths: object.strengths,
+      areasForImprovement: object.areasForImprovement,
+      finalAssessment: object.finalAssessment,
       createdAt: new Date().toISOString(),
-    });
+    };
 
-    return {
-      success: true,
-      feedbackId: feedback.id,
-    };
-  } catch (e) {
-    console.error(`Error Saving Feedback ${e}`);
-    return {
-      sucess: false,
-      feedbackId: null,
-    };
+    let result;
+
+    if (feedbackId) {
+      // Update existing feedback
+      result = await databases.updateDocument(
+        APPWRITE_CONFIG.databaseId,
+        APPWRITE_CONFIG.feedbackCollectionId,
+        feedbackId,
+        feedback
+      );
+    } else {
+      // Create new feedback
+      result = await databases.createDocument(
+        APPWRITE_CONFIG.databaseId,
+        APPWRITE_CONFIG.feedbackCollectionId,
+        ID.unique(),
+        feedback
+      );
+    }
+
+    return { success: true, feedbackId: result.$id };
+  } catch (error) {
+    console.error("Error saving feedback:", error);
+    return { success: false };
   }
-};
+}
 
-export const getFeedbackByInterviewId = async (
+export async function getInterviewById(id: string): Promise<Interview | null> {
+  try {
+    const interview = await databases.getDocument(
+      APPWRITE_CONFIG.databaseId,
+      APPWRITE_CONFIG.interviewsCollectionId,
+      id
+    );
+
+    // Extract only the relevant data for Interview type
+    return {
+      id: interview.$id,
+      role: interview.role,
+      level: interview.level,
+      questions: interview.questions,
+      techstack: interview.techstack,
+      createdAt: interview.createdAt,
+      userId: interview.userId,
+      type: interview.type,
+      finalized: interview.finalized,
+    } as Interview;
+  } catch (error) {
+    console.error("Error getting interview:", error);
+    return null;
+  }
+}
+
+export async function getFeedbackByInterviewId(
   params: GetFeedbackByInterviewIdParams
-): Promise<Feedback | null> => {
+): Promise<Feedback | null> {
   const { interviewId, userId } = params;
 
-  console.log(`FeedbackId: ${interviewId}, UserId: ${userId}`);
+  try {
+    const feedbackList = await databases.listDocuments(
+      APPWRITE_CONFIG.databaseId,
+      APPWRITE_CONFIG.feedbackCollectionId,
+      [
+        Query.equal("interviewId", interviewId),
+        Query.equal("userId", userId),
+        Query.limit(1),
+      ]
+    );
 
-  const feedback = await db
-    .collection("feedback")
-    .where("interviewId", "==", interviewId)
-    .where("userId", "==", userId)
-    .orderBy("createdAt", "desc")
-    .limit(1)
-    .get();
+    if (feedbackList.total === 0) return null;
 
-  if (!interviewId || !userId) {
-    console.warn("Missing interviewId or userId in getFeedbackByInterviewId:", {
-      interviewId,
-      userId,
-    });
+    const feedbackDoc = feedbackList.documents[0];
+    return {
+      id: feedbackDoc.$id,
+      interviewId: feedbackDoc.interviewId,
+      totalScore: feedbackDoc.totalScore,
+      categoryScores: feedbackDoc.categoryScores,
+      strengths: feedbackDoc.strengths,
+      areasForImprovement: feedbackDoc.areasForImprovement,
+      finalAssessment: feedbackDoc.finalAssessment,
+      createdAt: feedbackDoc.createdAt,
+    } as Feedback;
+  } catch (error) {
+    console.error("Error getting feedback:", error);
     return null;
   }
+}
 
-  if (feedback.empty) {
+export async function getLatestInterviews(
+  params: GetLatestInterviewsParams
+): Promise<Interview[] | null> {
+  const { userId, limit = 20 } = params;
+
+  try {
+    const interviews = await databases.listDocuments(
+      APPWRITE_CONFIG.databaseId,
+      APPWRITE_CONFIG.interviewsCollectionId,
+      [
+        Query.equal("finalized", true),
+        Query.notEqual("userId", userId),
+        Query.orderDesc("createdAt"),
+        Query.limit(limit),
+      ]
+    );
+
+    return interviews.documents.map((doc) => ({
+      id: doc.$id,
+      role: doc.role,
+      level: doc.level,
+      questions: doc.questions,
+      techstack: doc.techstack,
+      createdAt: doc.createdAt,
+      userId: doc.userId,
+      type: doc.type,
+      finalized: doc.finalized,
+    })) as Interview[];
+  } catch (error) {
+    console.error("Error getting latest interviews:", error);
     return null;
   }
+}
 
-  const feedbackDoc = feedback.docs[0];
+export async function getInterviewsByUserId(
+  userId: string
+): Promise<Interview[] | null> {
+  try {
+    const interviews = await databases.listDocuments(
+      APPWRITE_CONFIG.databaseId,
+      APPWRITE_CONFIG.interviewsCollectionId,
+      [Query.equal("userId", userId), Query.orderDesc("createdAt")]
+    );
 
-  return {
-    id: feedbackDoc.id,
-    ...feedbackDoc.data(),
-  } as Feedback;
-};
+    return interviews.documents.map((doc) => ({
+      id: doc.$id,
+      role: doc.role,
+      level: doc.level,
+      questions: doc.questions,
+      techstack: doc.techstack,
+      createdAt: doc.createdAt,
+      userId: doc.userId,
+      type: doc.type,
+      finalized: doc.finalized,
+    })) as Interview[];
+  } catch (error) {
+    console.error("Error getting user interviews:", error);
+    return null;
+  }
+}
