@@ -162,6 +162,44 @@ export async function signOut() {
   }
 }
 
+// Helper function to safely parse session data
+async function parseSessionSafely(
+  sessionCookie: string
+): Promise<string | null> {
+  // First, try to detect if it's a JWT token
+  const isJWT =
+    sessionCookie.startsWith("eyJ") ||
+    (sessionCookie.includes(".") && sessionCookie.split(".").length === 3) ||
+    (!sessionCookie.startsWith("{") && !sessionCookie.startsWith("["));
+
+  if (isJWT) {
+    console.log("Detected JWT token, validating with Appwrite");
+    try {
+      const appwriteUser = await validateAppwriteSession(sessionCookie);
+      return appwriteUser?.$id || null;
+    } catch (error) {
+      console.error("JWT validation failed:", error);
+      return null;
+    }
+  } else {
+    console.log("Detected JSON format, parsing");
+    try {
+      const sessionData = JSON.parse(sessionCookie);
+      return sessionData.userId || null;
+    } catch (error) {
+      console.error("JSON parsing failed, trying as JWT:", error);
+      // Fallback: try as JWT if JSON parsing fails
+      try {
+        const appwriteUser = await validateAppwriteSession(sessionCookie);
+        return appwriteUser?.$id || null;
+      } catch (jwtError) {
+        console.error("JWT fallback also failed:", jwtError);
+        return null;
+      }
+    }
+  }
+}
+
 // Get current user from session cookie
 export async function getCurrentUser(): Promise<User | null> {
   const cookieStore = await cookies();
@@ -180,42 +218,8 @@ export async function getCurrentUser(): Promise<User | null> {
   );
 
   try {
-    let userId: string;
-
-    // Check if the session cookie is a JWT token or our custom JSON
-    if (sessionCookie.startsWith("eyJ")) {
-      // This is likely a JWT token from Appwrite
-      console.log("Processing JWT session token");
-      try {
-        const appwriteUser = await validateAppwriteSession(sessionCookie);
-        if (!appwriteUser) {
-          console.log("Appwrite session validation returned null");
-          cookieStore.delete("session");
-          return null;
-        }
-        userId = appwriteUser.$id;
-        console.log(
-          "Successfully validated Appwrite session for user:",
-          userId
-        );
-      } catch (validationError) {
-        console.error("Appwrite session validation failed:", validationError);
-        cookieStore.delete("session");
-        return null;
-      }
-    } else {
-      // Try to parse as our custom JSON format
-      console.log("Processing custom JSON session");
-      try {
-        const sessionData = JSON.parse(sessionCookie);
-        userId = sessionData.userId;
-        console.log("Successfully parsed custom session for user:", userId);
-      } catch (parseError) {
-        console.error("Failed to parse custom session format:", parseError);
-        cookieStore.delete("session");
-        return null;
-      }
-    }
+    // Use the safe parsing helper
+    const userId = await parseSessionSafely(sessionCookie);
 
     if (!userId) {
       console.log("No userId found in session");
