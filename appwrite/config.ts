@@ -2,14 +2,12 @@
 export const APPWRITE_CONFIG = {
   endpoint: process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!,
   projectId: process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!,
-  databaseId: process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
+  tablesDBId: process.env.NEXT_PUBLIC_APPWRITE_TABLES_DB_ID!,
 
   // Collections
-  usersCollectionId: process.env.NEXT_PUBLIC_APPWRITE_USERS_COLLECTION_ID!,
-  interviewsCollectionId:
-    process.env.NEXT_PUBLIC_APPWRITE_INTERVIEWS_COLLECTION_ID!,
-  feedbackCollectionId:
-    process.env.NEXT_PUBLIC_APPWRITE_FEEDBACK_COLLECTION_ID!,
+  usersTableId: process.env.NEXT_PUBLIC_APPWRITE_USERS_COLLECTION_ID!,
+  interviewsTableId: process.env.NEXT_PUBLIC_APPWRITE_INTERVIEWS_COLLECTION_ID!,
+  feedbackTableId: process.env.NEXT_PUBLIC_APPWRITE_FEEDBACK_COLLECTION_ID!,
 };
 
 // Server-side configuration

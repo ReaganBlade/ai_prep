@@ -2,7 +2,8 @@ import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
 import { ID } from "node-appwrite";
 
-import { databases } from "@/appwrite/admin";
+// import { databases } from "@/appwrite/admin";
+import { tablesdb } from "@/appwrite/admin";
 import { APPWRITE_CONFIG } from "@/appwrite/config";
 import { getRandomInterviewCover } from "@/lib/utils";
 
@@ -39,12 +40,19 @@ export async function POST(request: Request) {
       createdAt: new Date().toISOString(),
     };
 
-    await databases.createDocument(
-      APPWRITE_CONFIG.databaseId,
-      APPWRITE_CONFIG.interviewsCollectionId,
-      ID.unique(),
-      interview
-    );
+    // await databases.createDocument(
+    //   APPWRITE_CONFIG.databaseId,
+    //   APPWRITE_CONFIG.interviewsTableId,
+    //   ID.unique(),
+    //   interview
+    // );
+
+    await tablesdb.createRow({
+      databaseId: APPWRITE_CONFIG.tablesDBId,
+      tableId: APPWRITE_CONFIG.interviewsTableId,
+      rowId: ID.unique(),
+      data: interview
+    })
 
     return Response.json({ success: true }, { status: 200 });
   } catch (error) {

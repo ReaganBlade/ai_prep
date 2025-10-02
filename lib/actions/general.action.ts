@@ -4,9 +4,10 @@ import { generateObject } from "ai";
 import { google } from "@ai-sdk/google";
 import { ID, Query } from "node-appwrite";
 
-import { databases } from "@/appwrite/admin";
+import { tablesdb } from "@/appwrite/admin";
 import { APPWRITE_CONFIG } from "@/appwrite/config";
 import { feedbackSchema } from "@/constants";
+// import { table } from "console";
 
 export async function createFeedback(params: CreateFeedbackParams) {
   const { interviewId, userId, transcript, feedbackId } = params;
@@ -55,20 +56,35 @@ export async function createFeedback(params: CreateFeedbackParams) {
 
     if (feedbackId) {
       // Update existing feedback
-      result = await databases.updateDocument(
-        APPWRITE_CONFIG.databaseId,
-        APPWRITE_CONFIG.feedbackCollectionId,
-        feedbackId,
-        feedback
-      );
+      // result = await databases.updateDocument(
+      //   APPWRITE_CONFIG.databaseId,
+      //   APPWRITE_CONFIG.feedbackCollectionId,
+      //   feedbackId,
+      //   feedback
+      // );
+
+      result = await tablesdb.updateRow({
+        databaseId: APPWRITE_CONFIG.tablesDBId,
+        tableId: APPWRITE_CONFIG.feedbackTableId,
+        rowId: feedbackId,
+        data: feedback,
+      });
+
     } else {
       // Create new feedback
-      result = await databases.createDocument(
-        APPWRITE_CONFIG.databaseId,
-        APPWRITE_CONFIG.feedbackCollectionId,
-        ID.unique(),
-        feedback
-      );
+      // result = await databases.createDocument(
+      //   APPWRITE_CONFIG.databaseId,
+      //   APPWRITE_CONFIG.feedbackCollectionId,
+      //   ID.unique(),
+      //   feedback
+      // );
+
+      result = await tablesdb.createRow({
+        databaseId: APPWRITE_CONFIG.tablesDBId,
+        tableId: APPWRITE_CONFIG.feedbackTableId,
+        rowId: ID.unique(),
+        data: feedback
+      });
     }
 
     return { success: true, feedbackId: result.$id };
@@ -80,11 +96,21 @@ export async function createFeedback(params: CreateFeedbackParams) {
 
 export async function getInterviewById(id: string): Promise<Interview | null> {
   try {
-    const interview = await databases.getDocument(
-      APPWRITE_CONFIG.databaseId,
-      APPWRITE_CONFIG.interviewsCollectionId,
-      id
-    );
+    // const interview = await databases.getDocument(
+    //   APPWRITE_CONFIG.tablesDBId,
+    //   APPWRITE_CONFIG.interviewsTableId,
+    //   id
+    // );
+
+    const interview = await tablesdb.getRow({
+      databaseId: APPWRITE_CONFIG.tablesDBId,
+      tableId: APPWRITE_CONFIG.interviewsTableId,
+      rowId: id,
+    });
+
+    console.log("Fetched interview:", interview);
+
+    if (!interview) return null;
 
     // Extract only the relevant data for Interview type
     return {
@@ -110,19 +136,29 @@ export async function getFeedbackByInterviewId(
   const { interviewId, userId } = params;
 
   try {
-    const feedbackList = await databases.listDocuments(
-      APPWRITE_CONFIG.databaseId,
-      APPWRITE_CONFIG.feedbackCollectionId,
-      [
+    // const feedbackList = await databases.listDocuments(
+    //   APPWRITE_CONFIG.tablesDBId,
+    //   APPWRITE_CONFIG.feedbackTableId,
+    //   [
+    //     Query.equal("interviewId", interviewId),
+    //     Query.equal("userId", userId),
+    //     Query.limit(1),
+    //   ]
+    // );
+
+    const feedbackList = await tablesdb.listRows({
+      databaseId: APPWRITE_CONFIG.tablesDBId,
+      tableId: APPWRITE_CONFIG.feedbackTableId,
+      queries: [
         Query.equal("interviewId", interviewId),
         Query.equal("userId", userId),
         Query.limit(1),
       ]
-    );
+    })
 
     if (feedbackList.total === 0) return null;
 
-    const feedbackDoc = feedbackList.documents[0];
+    const feedbackDoc = feedbackList.rows[0];
     return {
       id: feedbackDoc.$id,
       interviewId: feedbackDoc.interviewId,
@@ -145,18 +181,19 @@ export async function getLatestInterviews(
   const { userId, limit = 20 } = params;
 
   try {
-    const interviews = await databases.listDocuments(
-      APPWRITE_CONFIG.databaseId,
-      APPWRITE_CONFIG.interviewsCollectionId,
-      [
+    const interviews = await tablesdb.listRows({
+      databaseId: APPWRITE_CONFIG.tablesDBId,
+      tableId: APPWRITE_CONFIG.interviewsTableId,
+      queries: [
         Query.equal("finalized", true),
         Query.notEqual("userId", userId),
         Query.orderDesc("createdAt"),
         Query.limit(limit),
-      ]
-    );
+      ],
+    });
 
-    return interviews.documents.map((doc) => ({
+    // return interviews.document.map((doc) => ({
+    return interviews.rows.map((doc) => ({
       id: doc.$id,
       role: doc.role,
       level: doc.level,
@@ -177,13 +214,23 @@ export async function getInterviewsByUserId(
   userId: string
 ): Promise<Interview[] | null> {
   try {
-    const interviews = await databases.listDocuments(
-      APPWRITE_CONFIG.databaseId,
-      APPWRITE_CONFIG.interviewsCollectionId,
-      [Query.equal("userId", userId), Query.orderDesc("createdAt")]
-    );
+    // const interviews = await databases.listDocuments(
+    //   APPWRITE_CONFIG.tablesDBId,
+    //   APPWRITE_CONFIG.interviewsTableId,
+    //   [Query.equal("userId", userId), Query.orderDesc("createdAt")]
+    // );
 
-    return interviews.documents.map((doc) => ({
+    const interviews = await tablesdb.listRows({
+      databaseId: APPWRITE_CONFIG.tablesDBId,
+      tableId: APPWRITE_CONFIG.interviewsTableId,
+      queries: [
+        Query.equal("userId", userId),
+        Query.orderDesc("createdAt")
+      ]
+    })
+
+    // return interviews.documents.map((doc) => ({
+    return interviews.rows.map((doc) => ({
       id: doc.$id,
       role: doc.role,
       level: doc.level,

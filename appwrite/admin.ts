@@ -1,4 +1,4 @@
-import { Client, Account, Databases, Users } from "node-appwrite";
+import { Client, Account, TablesDB, Users } from "node-appwrite";
 
 // Initialize Appwrite Admin SDK
 function initAppwriteAdmin() {
@@ -9,9 +9,9 @@ function initAppwriteAdmin() {
 
   return {
     account: new Account(client),
-    databases: new Databases(client),
+    tablesdb: new TablesDB(client),
     users: new Users(client),
   };
 }
 
-export const { account, databases, users } = initAppwriteAdmin();
+export const { account, tablesdb, users } = initAppwriteAdmin();

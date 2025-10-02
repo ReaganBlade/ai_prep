@@ -2,7 +2,8 @@
 
 import { cookies } from "next/headers";
 import { ID, Query } from "node-appwrite";
-import { databases, users } from "@/appwrite/admin";
+// import { databases, users } from "@/appwrite/admin";
+import { tablesdb, users } from "@/appwrite/admin";
 import { APPWRITE_CONFIG } from "@/appwrite/config";
 
 // Session duration (1 week)
@@ -27,11 +28,17 @@ export async function signUp(params: SignUpParams) {
 
   try {
     // Check if user exists in database
-    const existingUsers = await databases.listDocuments(
-      APPWRITE_CONFIG.databaseId,
-      APPWRITE_CONFIG.usersCollectionId,
-      [Query.equal("email", email)]
-    );
+    // const existingUsers = await databases.listDocuments(
+    //   APPWRITE_CONFIG.databaseId,
+    //   APPWRITE_CONFIG.usersTableId,
+    //   [Query.equal("email", email)]
+    // );
+
+    const existingUsers = await tablesdb.listRows({
+      databaseId: APPWRITE_CONFIG.tablesDBId,
+      tableId: APPWRITE_CONFIG.usersTableId,
+      queries: [Query.equal("email", email)]
+    });
 
     if (existingUsers.total > 0) {
       return {
@@ -41,15 +48,24 @@ export async function signUp(params: SignUpParams) {
     }
 
     // Create user document in database
-    await databases.createDocument(
-      APPWRITE_CONFIG.databaseId,
-      APPWRITE_CONFIG.usersCollectionId,
-      uid,
-      {
+    // await databases.createDocument(
+    //   APPWRITE_CONFIG.databaseId,
+    //   APPWRITE_CONFIG.usersTableId,
+    //   uid,
+    //   {
+    //     name,
+    //     email,
+    //   }
+    // );
+    await tablesdb.createRow({
+      databaseId: APPWRITE_CONFIG.tablesDBId,
+      tableId: APPWRITE_CONFIG.usersTableId,
+      rowId: uid,
+      data: {
         name,
         email,
-      }
-    );
+      },
+    });
 
     return {
       success: true,
@@ -70,11 +86,17 @@ export async function signIn(params: SignInParams) {
 
   try {
     // Check if user exists
-    const existingUsers = await databases.listDocuments(
-      APPWRITE_CONFIG.databaseId,
-      APPWRITE_CONFIG.usersCollectionId,
-      [Query.equal("email", email)]
-    );
+    // const existingUsers = await databases.listDocuments(
+    //   APPWRITE_CONFIG.databaseId,
+    //   APPWRITE_CONFIG.usersTableId,
+    //   [Query.equal("email", email)]
+    // );
+
+    const existingUsers = await tablesdb.listRows({
+      databaseId: APPWRITE_CONFIG.tablesDBId,
+      tableId: APPWRITE_CONFIG.usersTableId,
+      queries: [Query.equal("email", email)]
+    });
 
     if (existingUsers.total === 0) {
       return {
@@ -122,11 +144,16 @@ export async function getCurrentUser(): Promise<User | null> {
     if (!userId) return null;
 
     // Get user info from database
-    const userRecord = await databases.getDocument(
-      APPWRITE_CONFIG.databaseId,
-      APPWRITE_CONFIG.usersCollectionId,
-      userId
-    );
+    // const userRecord = await databases.getDocument(
+    //   APPWRITE_CONFIG.databaseId,
+    //   APPWRITE_CONFIG.usersTableId,
+    //   userId
+    // );
+    const userRecord = await tablesdb.getRow({
+      databaseId: APPWRITE_CONFIG.tablesDBId,
+      tableId: APPWRITE_CONFIG.usersTableId,
+      rowId: userId
+    });
 
     return {
       id: userRecord.$id,
