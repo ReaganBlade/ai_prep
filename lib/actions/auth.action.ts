@@ -37,7 +37,7 @@ export async function signUp(params: SignUpParams) {
     const existingUsers = await tablesdb.listRows({
       databaseId: APPWRITE_CONFIG.tablesDBId,
       tableId: APPWRITE_CONFIG.usersTableId,
-      queries: [Query.equal("email", email)]
+      queries: [Query.equal("email", email)],
     });
 
     if (existingUsers.total > 0) {
@@ -95,7 +95,7 @@ export async function signIn(params: SignInParams) {
     const existingUsers = await tablesdb.listRows({
       databaseId: APPWRITE_CONFIG.tablesDBId,
       tableId: APPWRITE_CONFIG.usersTableId,
-      queries: [Query.equal("email", email)]
+      queries: [Query.equal("email", email)],
     });
 
     if (existingUsers.total === 0) {
@@ -125,7 +125,26 @@ export async function signIn(params: SignInParams) {
 export async function signOut() {
   const cookieStore = await cookies();
 
-  cookieStore.delete("session");
+  try {
+    // Also try to delete the Appwrite session if possible
+    // Note: This is a server action, so we can't directly access the client account
+    // The client should handle deleting the Appwrite session
+    cookieStore.delete("session");
+
+    return {
+      success: true,
+      message: "Signed out successfully.",
+    };
+  } catch (error) {
+    console.error("Sign out error:", error);
+    // Still delete the cookie even if there's an error
+    cookieStore.delete("session");
+
+    return {
+      success: true,
+      message: "Signed out successfully.",
+    };
+  }
 }
 
 // Get current user from session cookie
@@ -152,7 +171,7 @@ export async function getCurrentUser(): Promise<User | null> {
     const userRecord = await tablesdb.getRow({
       databaseId: APPWRITE_CONFIG.tablesDBId,
       tableId: APPWRITE_CONFIG.usersTableId,
-      rowId: userId
+      rowId: userId,
     });
 
     return {
