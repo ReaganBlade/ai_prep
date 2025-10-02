@@ -8,12 +8,14 @@ import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ID } from "appwrite";
+import { useEffect } from "react";
 
 import { account } from "@/appwrite/client";
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 
 import { signIn, signUp } from "@/lib/actions/auth.action";
+import { clearAllSessions } from "@/lib/session-utils";
 import FormField from "./FormField";
 
 const authFormSchema = (type: FormType) => {
@@ -36,6 +38,19 @@ const AuthForm = ({ type }: { type: FormType }) => {
       password: "",
     },
   });
+
+  // Clear any existing sessions when component mounts
+  useEffect(() => {
+    const clearSessions = async () => {
+      try {
+        await clearAllSessions();
+      } catch (error) {
+        console.log("No sessions to clear");
+      }
+    };
+
+    clearSessions();
+  }, []);
 
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     try {
@@ -67,7 +82,7 @@ const AuthForm = ({ type }: { type: FormType }) => {
       } else {
         const { email, password } = data;
 
-        // Sign in with Appwrite
+        // Create new session (existing sessions should already be cleared)
         const session = await account.createEmailPasswordSession(
           email,
           password
@@ -97,6 +112,18 @@ const AuthForm = ({ type }: { type: FormType }) => {
         toast.error("User already exists. Please sign in.");
       } else if (error.code === 401) {
         toast.error("Invalid email or password.");
+      } else if (
+        error.message?.includes("session is active") ||
+        error.message?.includes("session is prohibited")
+      ) {
+        toast.error("Session conflict detected. Clearing sessions...");
+        // Clear all sessions and prompt user to try again
+        try {
+          await clearAllSessions();
+          toast.info("Sessions cleared. Please try signing in again.");
+        } catch (clearError) {
+          console.log("Error clearing sessions:", clearError);
+        }
       } else {
         toast.error(`Authentication failed: ${error.message}`);
       }
