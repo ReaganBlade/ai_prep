@@ -13,9 +13,18 @@ import {
 async function Home() {
   const user = await getCurrentUser();
 
+  // If no user, return early or redirect (this shouldn't happen due to layout protection)
+  if (!user?.id) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Loading user data...</p>
+      </div>
+    );
+  }
+
   const [userInterviews, allInterview] = await Promise.all([
-    getInterviewsByUserId(user?.id!),
-    getLatestInterviews({ userId: user?.id! }),
+    getInterviewsByUserId(user.id),
+    getLatestInterviews({ userId: user.id }),
   ]);
 
   const hasPastInterviews = userInterviews?.length! > 0;
