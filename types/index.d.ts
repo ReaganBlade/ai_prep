@@ -39,7 +39,7 @@ interface User {
 }
 
 interface InterviewCardProps {
-  id?: string;
+  interviewId?: string;
   userId?: string;
   role: string;
   type: string;
@@ -73,7 +73,7 @@ interface GetLatestInterviewsParams {
 
 interface SignInParams {
   email: string;
-  idToken: string;
+  session: string;
 }
 
 interface SignUpParams {
