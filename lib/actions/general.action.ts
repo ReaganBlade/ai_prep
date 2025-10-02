@@ -69,7 +69,6 @@ export async function createFeedback(params: CreateFeedbackParams) {
         rowId: feedbackId,
         data: feedback,
       });
-
     } else {
       // Create new feedback
       // result = await databases.createDocument(
@@ -83,7 +82,7 @@ export async function createFeedback(params: CreateFeedbackParams) {
         databaseId: APPWRITE_CONFIG.tablesDBId,
         tableId: APPWRITE_CONFIG.feedbackTableId,
         rowId: ID.unique(),
-        data: feedback
+        data: feedback,
       });
     }
 
@@ -153,8 +152,8 @@ export async function getFeedbackByInterviewId(
         Query.equal("interviewId", interviewId),
         Query.equal("userId", userId),
         Query.limit(1),
-      ]
-    })
+      ],
+    });
 
     if (feedbackList.total === 0) return null;
 
@@ -179,6 +178,12 @@ export async function getLatestInterviews(
   params: GetLatestInterviewsParams
 ): Promise<Interview[] | null> {
   const { userId, limit = 20 } = params;
+
+  // Validate userId
+  if (!userId || userId.trim() === "") {
+    console.error("getLatestInterviews: Invalid userId provided");
+    return [];
+  }
 
   try {
     const interviews = await tablesdb.listRows({
@@ -213,6 +218,12 @@ export async function getLatestInterviews(
 export async function getInterviewsByUserId(
   userId: string
 ): Promise<Interview[] | null> {
+  // Validate userId
+  if (!userId || userId.trim() === "") {
+    console.error("getInterviewsByUserId: Invalid userId provided");
+    return [];
+  }
+
   try {
     // const interviews = await databases.listDocuments(
     //   APPWRITE_CONFIG.tablesDBId,
@@ -223,11 +234,8 @@ export async function getInterviewsByUserId(
     const interviews = await tablesdb.listRows({
       databaseId: APPWRITE_CONFIG.tablesDBId,
       tableId: APPWRITE_CONFIG.interviewsTableId,
-      queries: [
-        Query.equal("userId", userId),
-        Query.orderDesc("createdAt")
-      ]
-    })
+      queries: [Query.equal("userId", userId), Query.orderDesc("createdAt")],
+    });
 
     // return interviews.documents.map((doc) => ({
     return interviews.rows.map((doc) => ({
