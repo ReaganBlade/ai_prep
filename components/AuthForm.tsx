@@ -93,12 +93,21 @@ const AuthForm = ({ type }: { type: FormType }) => {
           return;
         }
 
+        console.log("Session object:", {
+          $id: session.$id,
+          userId: session.userId,
+          secret: session.secret ? "exists" : "missing",
+          sessionKeys: Object.keys(session),
+        });
+
         await signIn({
           email,
-          session: JSON.stringify({
-            userId: session.userId,
-            sessionId: session.$id,
-          }),
+          session:
+            session.secret ||
+            JSON.stringify({
+              userId: session.userId,
+              sessionId: session.$id,
+            }), // Fallback to custom JSON if secret is not available
         });
 
         toast.success("Signed in successfully.");

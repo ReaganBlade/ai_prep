@@ -5,6 +5,7 @@ import { ID, Query } from "node-appwrite";
 // import { databases, users } from "@/appwrite/admin";
 import { tablesdb, users } from "@/appwrite/admin";
 import { APPWRITE_CONFIG } from "@/appwrite/config";
+import { validateAppwriteSession } from "@/lib/appwrite-server";
 
 // Session duration (1 week)
 const SESSION_DURATION = 60 * 60 * 24 * 7;
@@ -12,6 +13,12 @@ const SESSION_DURATION = 60 * 60 * 24 * 7;
 // Set session cookie
 export async function setSessionCookie(session: string) {
   const cookieStore = await cookies();
+
+  console.log("Setting session cookie:", {
+    sessionLength: session?.length,
+    sessionStart: session?.substring(0, 20),
+    isProduction: process.env.NODE_ENV === "production",
+  });
 
   // Set cookie in the browser
   cookieStore.set("session", session, {
@@ -21,6 +28,8 @@ export async function setSessionCookie(session: string) {
     path: "/",
     sameSite: "lax",
   });
+
+  console.log("Session cookie set successfully");
 }
 
 export async function signUp(params: SignUpParams) {
@@ -83,6 +92,12 @@ export async function signUp(params: SignUpParams) {
 
 export async function signIn(params: SignInParams) {
   const { email, session } = params;
+
+  console.log("signIn called with:", {
+    email,
+    sessionLength: session?.length,
+    sessionStart: session?.substring(0, 20),
+  });
 
   try {
     // Check if user exists
@@ -152,28 +167,71 @@ export async function getCurrentUser(): Promise<User | null> {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get("session")?.value;
 
-  if (!sessionCookie) return null;
+  if (!sessionCookie) {
+    console.log("No session cookie found");
+    return null;
+  }
+
+  console.log(
+    "Session cookie found, length:",
+    sessionCookie.length,
+    "starts with:",
+    sessionCookie.substring(0, 10)
+  );
 
   try {
-    // In Appwrite, we'll need to parse the session data
-    // This is a simplified approach - you might need to implement proper session validation
-    const sessionData = JSON.parse(sessionCookie);
-    const userId = sessionData.userId;
+    let userId: string;
 
-    if (!userId) return null;
+    // Check if the session cookie is a JWT token or our custom JSON
+    if (sessionCookie.startsWith("eyJ")) {
+      // This is likely a JWT token from Appwrite
+      console.log("Processing JWT session token");
+      try {
+        const appwriteUser = await validateAppwriteSession(sessionCookie);
+        if (!appwriteUser) {
+          console.log("Appwrite session validation returned null");
+          cookieStore.delete("session");
+          return null;
+        }
+        userId = appwriteUser.$id;
+        console.log(
+          "Successfully validated Appwrite session for user:",
+          userId
+        );
+      } catch (validationError) {
+        console.error("Appwrite session validation failed:", validationError);
+        cookieStore.delete("session");
+        return null;
+      }
+    } else {
+      // Try to parse as our custom JSON format
+      console.log("Processing custom JSON session");
+      try {
+        const sessionData = JSON.parse(sessionCookie);
+        userId = sessionData.userId;
+        console.log("Successfully parsed custom session for user:", userId);
+      } catch (parseError) {
+        console.error("Failed to parse custom session format:", parseError);
+        cookieStore.delete("session");
+        return null;
+      }
+    }
+
+    if (!userId) {
+      console.log("No userId found in session");
+      cookieStore.delete("session");
+      return null;
+    }
 
     // Get user info from database
-    // const userRecord = await databases.getDocument(
-    //   APPWRITE_CONFIG.databaseId,
-    //   APPWRITE_CONFIG.usersTableId,
-    //   userId
-    // );
+    console.log("Fetching user data from database for:", userId);
     const userRecord = await tablesdb.getRow({
       databaseId: APPWRITE_CONFIG.tablesDBId,
       tableId: APPWRITE_CONFIG.usersTableId,
       rowId: userId,
     });
 
+    console.log("Successfully fetched user data:", userRecord.$id);
     return {
       id: userRecord.$id,
       name: userRecord.name,
@@ -181,6 +239,7 @@ export async function getCurrentUser(): Promise<User | null> {
     } as User;
   } catch (error) {
     console.error("Session verification error:", error);
+    cookieStore.delete("session");
     return null;
   }
 }
